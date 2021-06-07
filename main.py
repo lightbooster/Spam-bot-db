@@ -116,7 +116,7 @@ async def work(massage: types.Message):
         if data != -1:
             bd_data = bd.find_reviews(data[0])
             await bot.send_photo(massage.chat.id, open("img/spamy_attention.png", "rb"))
-            await massage.answer(mg.create_attention_message("+" + data[1], data[3], (set(map(lambda x: x[0], bd_data))),
+            await massage.answer(mg.create_attention_message("+" + data[1], data[3], bd.find_phone_classes(data[0]),
                                                              data[2],
                                                              bd_data)
                                                             , reply_markup=kb.review_or_continue_kb)
