@@ -74,8 +74,8 @@ def create_default_string():
 def create_choose_class_string():
     out = \
         """
-    Please, try to choose the category 🔍
-    of bad experience you had with this number.
+Please, try to choose the category 🔍
+of bad experience you had with this number.
     """
     return out
 
