@@ -34,7 +34,7 @@ async def start(massage: types.Message):
 async def reviews(massage: types.Message):
     reviews = bd.find_personal_reviews(types.User.get_current().id)
     if reviews == -1:
-        await massage.answer("You have not reviews.")
+        await massage.answer("You have no reviews.")
     else:
         for rv in range(len(reviews)):
             dell_or_edit_inkd = InlineKeyboardMarkup()
