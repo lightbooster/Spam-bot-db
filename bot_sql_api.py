@@ -204,7 +204,7 @@ class SpamDB:
         """
         result = self.SQL_cursor.execute(
             '''
-            SELECT Classes.name FROM Reviews, Classes
+            SELECT DISTINCT Classes.name FROM Reviews, Classes
             WHERE Reviews.phone_id = ? AND Reviews.class_id = Classes.id
             ''', (phone_id,)
         ).fetchall()
