@@ -26,7 +26,7 @@ async def start(massage: types.Message):
 
 @dp.message_handler(commands=["start"])
 async def start(massage: types.Message):
-    await bot.send_photo(massage.chat.id, open("img/spamy_ok.png", "rb"))
+    await bot.send_photo(massage.chat.id, open("img/spamy.png", "rb"))
     await massage.answer(mg.create_hi_string()[0])
     await massage.answer(mg.create_hi_string()[1])
 
@@ -121,6 +121,7 @@ async def work(massage: types.Message):
                                                              bd_data)
                                                             , reply_markup=kb.review_or_continue_kb)
         else:
+            await bot.send_photo(massage.chat.id, open("img/spamy_ok.png", "rb"))
             await massage.answer(mg.create_ok_message("+" + str(number.country_code) + str(number.national_number)),
                                  reply_markup=kb.review_or_continue_kb)
         state = dp.current_state(chat=types.Chat.get_current().id, user=types.User.get_current().id)
