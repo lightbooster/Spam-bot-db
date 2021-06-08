@@ -87,11 +87,11 @@ async def Review(massage: types.Message):
     elif massage.text == "Fraud":
         bad_class = 1
     elif massage.text == "Threats":
-        bad_class = 3
+        bad_class = 2
     elif massage.text == "Advertisement":
-        bad_class = 4
+        bad_class = 3
     else:
-        bad_class = 5 # other
+        bad_class = 4 # other
     await massage.answer(mg.create_need_comment_string(), reply_markup=types.ReplyKeyboardRemove())
     state = dp.current_state(chat=types.Chat.get_current().id, user=types.User.get_current().id)
     await state.set_state("Comment")
