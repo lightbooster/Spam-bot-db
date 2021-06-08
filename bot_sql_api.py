@@ -87,10 +87,10 @@ class SpamDB:
             '''
             CREATE TABLE IF NOT EXISTS Reviews 
             (id INTEGER PRIMARY KEY,
-            phone_id INTEGER,
-            class_id INTEGER,
+            phone_id INTEGER NOT NULL,
+            class_id INTEGER NOT NULL,
             comment TEXT,
-            reviewer_id INTEGER,
+            reviewer_id INTEGER NOT NULL,
             foreign key (phone_id) references Phones(id),
             foreign key (class_id) references Classes(id))
             ''')
@@ -98,9 +98,9 @@ class SpamDB:
             '''
             CREATE TABLE IF NOT EXISTS Phones 
             (id INTEGER PRIMARY KEY,
-            phone TEXT,
-            reviews_number INTEGER,
-            common_class_id INTEGER,
+            phone TEXT NOT NULL,
+            reviews_number INTEGER NOT NULL,
+            common_class_id INTEGER NOT NULL,
             foreign key (common_class_id) references Classes(id))
             '''
         )
@@ -108,9 +108,17 @@ class SpamDB:
             '''
             CREATE TABLE IF NOT EXISTS Classes 
             (id INTEGER PRIMARY KEY,
-            name TEXT)
+            name TEXT NOT NULL)
             '''
         )
+        # create index
+        self.SQL_cursor.execute(
+            '''
+            CREATE UNIQUE INDEX idx_phones 
+            ON Phones (phone)
+            '''
+        )
+        
         return 1
 
     def __insert_default_classes(self, default_list: tuple):
