@@ -29,6 +29,7 @@ class SpamDB:
         :param auto_save: should PhoneDB save changes on destroy
         """
         self.__auto_save = auto_save
+        self.__default_classes_names = ('Spam', 'Fraud', 'Threats', 'Advertisement', 'Other')
 
         cur_dir = os.getcwd()
         db_exists = os.path.exists(cur_dir + '/' + db_name)
@@ -42,17 +43,11 @@ class SpamDB:
         self.SQL_connection = sqlite3.connect(db_name, check_same_thread=False)
         self.SQL_cursor = self.SQL_connection.cursor()
 
-        if self.__create_tables() == -1:
-            os.remove(cur_dir + '/' + db_name)
-            self.__auto_save = False
-            print("System: can not create DB")
-            print('------------------------')
-            exit()
-
-        self.__default_classes_names = ('Spam', 'Fraud', 'Threats', 'Advertisement', 'Other')
         if not db_exists:
-            res = self.__insert_default_classes(self.__default_classes_names)
-            if res == -1:
+            res0 = self.__create_tables()
+            res1 = self.__insert_default_classes(self.__default_classes_names)
+            res2 = self.__define_triggers()
+            if res0 == -1 or res1 == -1 or res2 == -1:
                 os.remove(cur_dir + '/' + db_name)
                 self.__auto_save = False
                 print("System: can not create DB")
@@ -75,6 +70,55 @@ class SpamDB:
         """
         self.SQL_connection.commit()
         print("System: DB saved")
+        return 1
+
+    @try_except_decorator
+    def __define_triggers(self) -> int:
+        """
+        Create SQL Triggers on Reviews table for updating Phone's fields
+        :return: 1 - success, (-1) - error
+        """
+        # when INSERT
+        self.SQL_cursor.execute(
+            '''
+            CREATE TRIGGER counter_insert 
+            AFTER INSERT ON Reviews
+            BEGIN
+                UPDATE Phones
+                SET reviews_number = (reviews_number + 1), common_class_id = (SELECT class_id FROM (SELECT class_id, MAX(counter) FROM
+                                                                                 (SELECT class_id,
+                                                                                  COUNT(class_id) AS counter 
+                                                                                  FROM Reviews
+                                                                                  WHERE phone_id = NEW.phone_id
+                                                                                  GROUP BY class_id))
+                                                                               )
+                WHERE id = NEW.phone_id;
+                
+                
+            END;
+            ''')
+
+        # when DELETE
+        self.SQL_cursor.execute(
+            '''
+            CREATE TRIGGER counter_delete 
+            AFTER DELETE ON Reviews
+            BEGIN
+                UPDATE Phones
+                SET reviews_number = (reviews_number - 1), common_class_id = (SELECT class_id FROM (SELECT class_id, MAX(counter) FROM
+                                                                                 (SELECT class_id,
+                                                                                  COUNT(class_id) AS counter 
+                                                                                  FROM Reviews
+                                                                                  WHERE phone_id = OLD.phone_id
+                                                                                  GROUP BY class_id))
+                                                                               )
+                WHERE id = OLD.phone_id;
+                
+                DELETE FROM Phones
+                WHERE reviews_number <= 0;
+            END;
+            ''')
+
         return 1
 
     def __create_tables(self) -> int:
@@ -118,9 +162,9 @@ class SpamDB:
             ON Phones (phone)
             '''
         )
-        
         return 1
 
+    @try_except_decorator
     def __insert_default_classes(self, default_list: tuple):
         for index, class_name in enumerate(default_list):
             values = (index, class_name)
@@ -130,6 +174,7 @@ class SpamDB:
                 VALUES (?, ?)
                 ''', values
             )
+        return 1
 
     @try_except_decorator
     def find_phone(self, phone_number: str):
@@ -244,7 +289,6 @@ class SpamDB:
             ''', review_info
         )
         # trigger
-        self.__recalculate_phone_record(phone_id)
 
         return self.__reviews_max_index()
 
@@ -270,47 +314,6 @@ class SpamDB:
             ''', (review_info[1], review_info[0])
         ).fetchall()
 
-        self.__recalculate_phone_record(phone_id)
-
-        return 1
-
-    def __recalculate_phone_record(self, phone_id: int):
-        """
-        Recalculate Phones.reviews_number and Phones.common_class_id when triggered
-        If no reviews for phone then delete record
-        :param phone_id: id of record to recalculate
-        :return: 1 - success, 2 - has been removed, (-1) - error
-        """
-        counter = self.SQL_cursor.execute(
-            '''
-            SELECT COUNT(id) FROM Reviews
-            WHERE phone_id = ?
-            ''', (phone_id,)
-        ).fetchall()
-        counter = int(counter[0][0])
-
-        if counter == 0:
-            self.__delete_phone(phone_id)
-            return 2
-
-        common_class_id = self.SQL_cursor.execute(
-            '''
-            SELECT class_id, COUNT(class_id) AS counter FROM Reviews
-            WHERE phone_id = ?
-            GROUP BY class_id
-            ORDER BY counter DESC
-            ''', (phone_id,)
-        ).fetchall()
-        common_class_id = int(common_class_id[0][0])
-
-        self.SQL_cursor.execute(
-            '''
-            UPDATE Phones
-            SET reviews_number = ?, common_class_id = ?
-            WHERE id = ?
-            ''', (counter, common_class_id, phone_id)
-        ).fetchall()
-
         return 1
 
     def __insert_phone(self, phone_info: tuple) -> int:
@@ -322,7 +325,7 @@ class SpamDB:
         self.SQL_cursor.execute(
             '''
             INSERT INTO Phones
-            VALUES ((SELECT MAX(id) from Phones) + 1, ?, 1, ?)
+            VALUES ((SELECT MAX(id) from Phones) + 1, ?, 0, ?)
             ''', phone_info
         )
         return self.__phones_max_index()
@@ -348,8 +351,6 @@ class SpamDB:
             WHERE id = ?
             ''', (review_id,)
         )
-
-        self.__recalculate_phone_record(phone_id)
 
         return 1
 
